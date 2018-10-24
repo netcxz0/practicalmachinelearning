@@ -8,25 +8,107 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, WARNING = FALSE)
 ```
 
-## R Markdown
+## Summary
+In this project, we will get the data collected from accelerometers strapped on belt, forearm, arm, and dumbell of 6 participants; use the random forest algorithm to build the prediction model; apply the trained model to the testing data set to predict what type of exercise was done.  The data for this prediction was collected by a group of researchers, Velloso et al 2013 ^[1]^.  We will use k-fold cross validation with k set to 10 for cross validation in the training data set. 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## Weight Lifting Exercises Data ^[1]^
 
-```{r cars}
-summary(cars)
+This human activity recognition research has traditionally focused on discriminating between different activities, to predict "which" activity was performed at a specific point in time (like with the Daily Living Activities dataset above). The approach we propose for the Weight Lifting Exercises dataset is to investigate "how (well)" an activity was performed by the wearer. The "how (well)" investigation has only received little attention so far, even though it potentially provides useful information for a large variety of applications,such as sports training.
+
+Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.
+
+The training datat for this project are available here:
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+
+The test data are available here:
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+
+
+
+## Exploratory Data Analysis
+```{r echo=TRUE, warning=FALSE }
+training = read.csv("pml-training.csv")
+testing = read.csv("pml-testing.csv")
+dim(training)
+dim(testing)
 ```
 
-## Including Plots
+There are 159 prediction variables in both training and testing data set, and 1 dependent variable.  We will apply the learned model to the 20 test cases available in the test data set to predict 20 different test cases.  Among 159 independent variables, many of them contain the NA values, and not used for the prediction.  Let's remove the independent variables that have NA value from the training and test data set. This results in 59 independent variables in both training and testing data set.
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r echo=FALSE, warning=FALSE}
+# remove NA columns
+testing <- testing[, colSums(is.na(testing)) == 0]
+# remove the index column X
+testing <- testing[, -1]
+x_testing <- testing[, -59]
+x_training <- training[, names(x_testing)]
+training <- cbind(x_training, classe = training[, 160])
+```
+```{r echo = TRUE}
+dim(training)
+dim(testing)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Build the prediction model
+
+### Random Forests
+Random forests or random decision forests are an ensemble learning method for classification, regression and other tasks, that operate by constructing a multitude of decision trees at training time and outputting the class that is the mode of the classes(classification) or mean prediction of the individual trees^[2]^. Random forests correct the decision tree's habit of overfitting to their trainning set ^[3]:587-588^.
+
+### K-fold cross validation
+In k-fold cross-validation, the original sample is randomly partitioned into k equal sized subsamples. Of the k subsamples, a single subsample is retained as the validation data for testing the model, and the remaining k ??? 1 subsamples are used as training data. The cross-validation process is then repeated k times, with each of the k subsamples used exactly once as the validation data. The k results can then be averaged to produce a single estimation. The advantage of this method over repeated random sub-sampling (see below) is that all observations are used for both training and validation, and each observation is used for validation exactly once. 10-fold cross-validation is commonly used^[4]^, but in general k remains an unfixed parameter.
+
+In the R Caret package, we can use the traincontrol function to enable the k-fold cross validation and parallel processing to speed up the training speed.
+
+```{r echo=FALSE, message = FALSE, warning=FALSE}
+library(caret)
+
+#enable parallel processing to speed up
+library(parallel)
+library(doParallel)
+cluster <- makeCluster(detectCores() -1)  # convention to leave 1 core for OS
+registerDoParallel(cluster)
+
+```
+```{r echo = TRUE}
+# configure trainControl object
+fitControl <- trainControl(method = "cv", number = 10, allowParallel = TRUE)
+```
+```{r echo =FALSE}
+modFitRf <- train(classe ~ ., data = training, model = "rf", trControl = fitControl, ntree = 10) 
+
+# De-register parallel processing cluster
+stopCluster(cluster)
+registerDoSEQ()
+```
+
+### The trained Random Forest prediction model
+```{r echo = TRUE}
+modFitRf
+modFitRf$resample
+confusionMatrix.train(modFitRf)
+```
+
+### Prediction on the 20 test cases in the testing data
+```{r}
+predict(modFitRf, newdata = testing)
+
+```
+
+## Conclusion
+
+Using the Random Forest algorithm with 10 fold cross validation on the training data set 0f 19,622 samples, the trained model has 99.9% accuracy on the training data set.  
+
+We used the trained model to predict the 20 test cases in the test data set, and got the 100% accuracy.
+
+## References
+[1] Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6. 
+
+[2] Ho, Tin Kam (1995). Random Decision Forests (PDF). Proceedings of the 3rd International Conference on Document Analysis and Recognition, Montreal, QC, 14-16 August 1995. pp. 278-282. Archived from the original (PDF) on 17 April 2016. Retrieved 5 June 2016. 
+
+[3] Hastie, Trevor; Tibshirani, Robert; Friedman, Jerome (2008). The Elements of Statistical Learning (2nd ed.). Springer. ISBN 0-387-95284-5.
+
+[4] McLachlan, Geoffrey J.; Do, Kim-Anh; Ambroise, Christophe (2004). Analyzing microarray gene expression data. Wiley.
