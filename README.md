@@ -1,4 +1,4 @@
-# practicalmachinelearning
+# Practical Machine Leearning Course Project
 
 To view the rendered html page for this project, please click at this Url.
 
