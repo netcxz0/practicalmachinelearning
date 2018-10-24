@@ -73,17 +73,32 @@ dim(testing)
 Random forests or random decision forests are an ensemble learning method for classification, regression and other tasks, that operate by constructing a multitude of decision trees at training time and outputting the class that is the mode of the classes(classification) or mean prediction of the individual trees^[2]^. Random forests correct the decision tree's habit of overfitting to their trainning set ^[3]:587-588^.
 
 ### K-fold cross validation
-In k-fold cross-validation, the original sample is randomly partitioned into k equal sized subsamples. Of the k subsamples, a single subsample is retained as the validation data for testing the model, and the remaining k ??? 1 subsamples are used as training data. The cross-validation process is then repeated k times, with each of the k subsamples used exactly once as the validation data. The k results can then be averaged to produce a single estimation. The advantage of this method over repeated random sub-sampling (see below) is that all observations are used for both training and validation, and each observation is used for validation exactly once. 10-fold cross-validation is commonly used^[4]^, but in general k remains an unfixed parameter.
+In k-fold cross-validation, the original sample is randomly partitioned into k equal sized subsamples. Of the k subsamples, a single subsample is retained as the validation data for testing the model, and the remaining k - 1 subsamples are used as training data. The cross-validation process is then repeated k times, with each of the k subsamples used exactly once as the validation data. The k results can then be averaged to produce a single estimation. The advantage of this method over repeated random sub-sampling (see below) is that all observations are used for both training and validation, and each observation is used for validation exactly once. 10-fold cross-validation is commonly used^[4]^, but in general k remains an unfixed parameter.
 
 In the R Caret package, we can use the traincontrol function to enable the k-fold cross validation and parallel processing to speed up the training speed.
 
 
+```r
+library(caret)
+
+#enable parallel processing to speed up
+library(parallel)
+library(doParallel)
+cluster <- makeCluster(detectCores() -1)  # convention to leave 1 core for OS
+registerDoParallel(cluster)
+```
 
 ```r
 # configure trainControl object
 fitControl <- trainControl(method = "cv", number = 10, allowParallel = TRUE)
-```
 
+# use random forest with 10-fold cross validation and parallel process to train the model 
+modFitRf <- train(classe ~ ., data = training, model = "rf", trControl = fitControl, ntree = 10) 
+
+# De-register parallel processing cluster
+stopCluster(cluster)
+registerDoSEQ()
+```
 
 ### The trained Random Forest prediction model
 
@@ -100,13 +115,13 @@ modFitRf
 ## 
 ## No pre-processing
 ## Resampling: Cross-Validated (10 fold) 
-## Summary of sample sizes: 17661, 17661, 17660, 17661, 17659, 17660, ... 
+## Summary of sample sizes: 17661, 17660, 17660, 17659, 17658, 17661, ... 
 ## Resampling results across tuning parameters:
 ## 
 ##   mtry  Accuracy   Kappa    
-##    2    0.9790038  0.9734241
-##   41    0.9988278  0.9985173
-##   80    0.9983692  0.9979372
+##    2    0.9769152  0.9707840
+##   41    0.9991336  0.9989041
+##   80    0.9984201  0.9980017
 ## 
 ## Accuracy was used to select the optimal model using the largest value.
 ## The final value used for the model was mtry = 41.
@@ -118,16 +133,16 @@ modFitRf$resample
 
 ```
 ##     Accuracy     Kappa Resample
-## 1  0.9989801 0.9987099   Fold02
-## 2  0.9974503 0.9967749   Fold01
-## 3  0.9994901 0.9993550   Fold04
+## 1  0.9989806 0.9987107   Fold02
+## 2  0.9994901 0.9993550   Fold01
+## 3  0.9994906 0.9993557   Fold04
 ## 4  0.9994903 0.9993553   Fold03
-## 5  0.9984709 0.9980661   Fold06
-## 6  0.9974529 0.9967782   Fold05
-## 7  0.9984717 0.9980669   Fold08
-## 8  1.0000000 1.0000000   Fold07
-## 9  0.9994906 0.9993557   Fold10
-## 10 0.9989806 0.9987106   Fold09
+## 5  0.9994901 0.9993549   Fold06
+## 6  1.0000000 1.0000000   Fold05
+## 7  0.9989812 0.9987113   Fold08
+## 8  0.9994903 0.9993553   Fold07
+## 9  0.9979602 0.9974198   Fold10
+## 10 0.9979623 0.9974225   Fold09
 ```
 
 ```r
@@ -147,7 +162,7 @@ confusionMatrix.train(modFitRf)
 ##          D  0.0  0.0  0.0 16.4  0.0
 ##          E  0.0  0.0  0.0  0.0 18.4
 ##                             
-##  Accuracy (average) : 0.9988
+##  Accuracy (average) : 0.9991
 ```
 
 ### Prediction on the 20 test cases in the testing data

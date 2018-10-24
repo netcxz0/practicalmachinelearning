@@ -59,11 +59,11 @@ dim(testing)
 Random forests or random decision forests are an ensemble learning method for classification, regression and other tasks, that operate by constructing a multitude of decision trees at training time and outputting the class that is the mode of the classes(classification) or mean prediction of the individual trees^[2]^. Random forests correct the decision tree's habit of overfitting to their trainning set ^[3]:587-588^.
 
 ### K-fold cross validation
-In k-fold cross-validation, the original sample is randomly partitioned into k equal sized subsamples. Of the k subsamples, a single subsample is retained as the validation data for testing the model, and the remaining k ??? 1 subsamples are used as training data. The cross-validation process is then repeated k times, with each of the k subsamples used exactly once as the validation data. The k results can then be averaged to produce a single estimation. The advantage of this method over repeated random sub-sampling (see below) is that all observations are used for both training and validation, and each observation is used for validation exactly once. 10-fold cross-validation is commonly used^[4]^, but in general k remains an unfixed parameter.
+In k-fold cross-validation, the original sample is randomly partitioned into k equal sized subsamples. Of the k subsamples, a single subsample is retained as the validation data for testing the model, and the remaining k - 1 subsamples are used as training data. The cross-validation process is then repeated k times, with each of the k subsamples used exactly once as the validation data. The k results can then be averaged to produce a single estimation. The advantage of this method over repeated random sub-sampling (see below) is that all observations are used for both training and validation, and each observation is used for validation exactly once. 10-fold cross-validation is commonly used^[4]^, but in general k remains an unfixed parameter.
 
 In the R Caret package, we can use the traincontrol function to enable the k-fold cross validation and parallel processing to speed up the training speed.
 
-```{r echo=FALSE, message = FALSE, warning=FALSE}
+```{r echo=TRUE, message = FALSE, warning=FALSE}
 library(caret)
 
 #enable parallel processing to speed up
@@ -76,8 +76,8 @@ registerDoParallel(cluster)
 ```{r echo = TRUE}
 # configure trainControl object
 fitControl <- trainControl(method = "cv", number = 10, allowParallel = TRUE)
-```
-```{r echo =FALSE}
+
+# use random forest with 10-fold cross validation and parallel process to train the model 
 modFitRf <- train(classe ~ ., data = training, model = "rf", trControl = fitControl, ntree = 10) 
 
 # De-register parallel processing cluster
